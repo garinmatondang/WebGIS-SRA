@@ -74,6 +74,11 @@ export default function Map() {
       "Aset-SubHolding": [],
     };
 
+    const featureLayerStore = {
+      "Aset-Holding": [],
+      "Aset-SubHolding": [],
+    };
+
     const wfsConfigs = [
       {
         name: "Aset-Holding",
@@ -236,6 +241,10 @@ export default function Map() {
           featureStore[cfg.name] = geojson.features;
         }
 
+        if (featureLayerStore[cfg.name] !== undefined) {
+          featureLayerStore[cfg.name] = [];
+        }
+
         const layer = L.geoJSON(geojson, {
           style: cfg.style || undefined,
           pointToLayer: (feature, latlng) =>
@@ -266,6 +275,9 @@ export default function Map() {
             }
 
             lyr.bindPopup(`<table>${rows}</table>`);
+            if (featureLayerStore[cfg.name] !== undefined) {
+              featureLayerStore[cfg.name].push({ feature, layer: lyr });
+            }
           },
         });
 
@@ -464,6 +476,8 @@ export default function Map() {
           const item = document.createElement("div");
           item.style.borderBottom = "1px solid #ddd";
           item.style.padding = "4px 0";
+          item.style.cursor = "pointer"; // biar kelihatan bisa diklik
+          item.style.background = "#ffffff";
 
           let html = `<table style="margin-bottom:6px;">`;
 
@@ -474,6 +488,36 @@ export default function Map() {
 
           html += "</table>";
           item.innerHTML = html;
+
+          // ⬇️ KLIK LIST = ZOOM KE ASET
+          item.onclick = () => {
+            const entry = featureLayerStore[layerName]?.[idx];
+            if (!entry || !entry.layer) return;
+
+            const lyr = entry.layer;
+
+            // Kalau poligon/garis
+            if (typeof lyr.getBounds === "function") {
+              const b = lyr.getBounds();
+              if (b && b.isValid && b.isValid()) {
+                map.fitBounds(b, { padding: [20, 20] });
+              } else {
+                // fallback kalau getBounds tidak valid
+                const center = b.getCenter ? b.getCenter() : null;
+                if (center) map.setView(center, 14);
+              }
+            }
+            // Kalau point (marker/circleMarker)
+            else if (typeof lyr.getLatLng === "function") {
+              map.setView(lyr.getLatLng(), 16);
+            }
+
+            // buka popup-nya juga
+            if (typeof lyr.openPopup === "function") {
+              lyr.openPopup();
+            }
+          };
+
           listContainer.appendChild(item);
         });
       };
