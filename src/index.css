@@ -1,4 +1,5 @@
 @import "tailwindcss";
+
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
@@ -12,10 +13,124 @@
   }
 }
 
-/* Tambahkan ini di paling bawah */
 html,
 body,
 #root {
   height: 100%;
   margin: 0;
+}
+
+/*  SCROLLBAR UNTUK PANEL ASET   */
+/* Firefox */
+.asset-list-panel {
+  scrollbar-width: thin;
+  scrollbar-color: #0d4f63 #011926;
+}
+
+/* Chrome, Edge, Safari */
+.asset-list-panel::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+.asset-list-panel::-webkit-scrollbar-track {
+  background: #011926 !important;
+}
+
+.asset-list-panel::-webkit-scrollbar-thumb {
+  background-color: #0d4f63 !important;
+  border-radius: 4px;
+}
+
+.asset-list-panel::-webkit-scrollbar-thumb:hover {
+  background-color: #0f6883 !important;
+}
+
+/* CUSTOM POPUP */
+
+/* Wrapper utama Popup */
+.leaflet-popup.custom-popup .leaflet-popup-content-wrapper {
+  background: #011926 !important;
+  color: white !important;
+  border-radius: 6px;
+  padding: 6px 0;
+  margin: 0;
+  border: 0;
+}
+
+/* Konten di dalam popup */
+leaflet-poptup.custom-popup .leaflet-popup-content {
+  margin: 0;
+  padding: 4px 10px;
+  color: white !important;
+  font-size: 12px;
+  font-family: Arial, sans-serif;
+}
+
+/* Tabel */
+.leaflet-popup.custom-popup table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+/* Sel tabel (judul + isi */
+.leaflet-popup.custom-popup table td {
+  padding: 3px 8px;
+  color: white !important;
+}
+
+/* Judul Field */
+.leaflet-popup.custom-popup table td:first-child {
+  white-space: nowrap;
+  padding-right: 12px;
+}
+
+/* Label */
+leaflet-popup.custom-popup table b {
+  color: #b8e3f5 !important;
+}
+
+/* ZOOM CONTROL CUSTOM */
+.leaflet-control-zoom a {
+  background: #011926 !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  font-weight: bold;
+}
+
+.leaflet-control-zoom a:hover {
+  background: #03394f !important;
+  color: white !important;
+}
+
+/* PANEL LAYER BUTTON */
+.leaflet-control-layers-toggle {
+  background-color: #011926 !important;
+  color: white !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* LIST PANEL */
+.leaflet-control-layers-expanded {
+  background: #011926 !important;
+  color: white !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* TEKS DI DALAM LIST */
+.leaflet-control-layers-expanded label {
+  color: white !important;
+}
+
+/* CHECKBOX */
+.leaflet-control-layers-selector {
+  accent-color: #0d4f63 !important;
+}
+
+/* HOVER ITEM */
+.leaflet-control-layers-expanded label:hover {
+  background: #03394f !important;
+  color: white !important;
 }

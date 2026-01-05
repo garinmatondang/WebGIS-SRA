@@ -1,56 +1,7 @@
 import React, { useState } from "react";
 import Login from "./Login";
 import Map from "../komponen/Map";
-
-function AdminPage({ user, onLogout }) {
-  return (
-    <div
-      style={{
-        height: "100vh",
-        width: "100vw",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "Arial, sans-serif",
-        background: "#f5f5f5",
-      }}
-    >
-      <div
-        style={{
-          background: "white",
-          padding: "24px 32px",
-          borderRadius: "12px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          textAlign: "center",
-          minWidth: "320px",
-        }}
-      >
-        <h2 style={{ marginBottom: "8px", color: "#0A3566" }}>Halaman Admin</h2>
-        <p style={{ color: "#555", marginBottom: "12px", fontSize: "13px" }}>
-          Selamat datang, {user?.email || "Admin"}.
-        </p>
-        <p style={{ color: "#777", marginBottom: "16px", fontSize: "12px" }}>
-          Tampilan Admin masih kosong. Nanti bisa diisi dashboard, tabel aset,
-          manajemen user, dll.
-        </p>
-        <button
-          onClick={onLogout}
-          style={{
-            padding: "8px 12px",
-            borderRadius: "6px",
-            border: "none",
-            background: "#0A3566",
-            color: "white",
-            fontWeight: "bold",
-            cursor: "pointer",
-          }}
-        >
-          Logout
-        </button>
-      </div>
-    </div>
-  );
-}
+import AdminMap from "../komponen/MapAdmin"; // ⬅️ tambahkan ini (sesuaikan path dengan struktur project-mu)
 
 export default function App() {
   const [role, setRole] = useState(null); // "user" | "admin" | null
@@ -71,11 +22,39 @@ export default function App() {
     return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // Role User → tampilkan WebGIS (Map.jsx yang sudah kamu buat)
+  // Role User → tampilkan WebGIS (Map.jsx)
   if (role === "user") {
     return (
       <>
-        {/* Optional: tombol logout mengambang */}
+        {/* Tombol logout mengambang di tampilan User */}
+        <button
+          onClick={handleLogout}
+          style={{
+            position: "fixed",
+            top: "14px",
+            right: "16px",
+            zIndex: 10000,
+            padding: "6px 10px",
+            borderRadius: "6px",
+            border: "none",
+            background: "#0D4F63",
+            color: "white",
+            fontSize: "11px",
+            cursor: "pointer",
+          }}
+        >
+          Logout
+        </button>
+        <Map />
+      </>
+    );
+  }
+
+  // Role Admin → panggil halaman AdminMap
+  if (role === "admin") {
+    return (
+      <>
+        {/* Tombol logout mengambang di tampilan Admin */}
         <button
           onClick={handleLogout}
           style={{
@@ -94,14 +73,9 @@ export default function App() {
         >
           Logout
         </button>
-        <Map />
+        <AdminMap user={user} />
       </>
     );
-  }
-
-  // Role Admin → halaman kosong sementara
-  if (role === "admin") {
-    return <AdminPage user={user} onLogout={handleLogout} />;
   }
 
   return null;
