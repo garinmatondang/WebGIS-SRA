@@ -2,14 +2,15 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-export default function AdminMap() {
+export default function Map() {
   const mapRef = useRef(null);
   const mapEl = useRef(null);
+  const activeRowRef = useRef(null);
 
   useEffect(() => {
     if (mapRef.current) return;
 
-    // Hilangkan margin default browser agar header biru mentok kiri-kanan
+    // Hilangkan margin default browser
     document.body.style.margin = "0";
     document.documentElement.style.margin = "0";
 
@@ -18,8 +19,12 @@ export default function AdminMap() {
       center: [-6.9147, 107.6098],
       zoom: 13,
       zoomControl: false,
+      preferCanvas: false,
     });
     mapRef.current = map;
+
+    const svgRenderer = L.svg();
+    map.addLayer(svgRenderer);
 
     // Basemap Google Satellite
     L.tileLayer("https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", {
@@ -36,70 +41,61 @@ export default function AdminMap() {
     // ========= FUNGSI WARNA BERDASARKAN NILAI SRA =========
     const getSraColor = (value) => {
       const v = String(value || "").trim();
-
-      if (v === "Sangat Rawan") return "#b10026"; // merah tua
-      if (v === "Rawan") return "#fc4e2a"; // merah-oranye
-      if (v === "Normal") return "#feb24c"; // kuning
-      if (v === "Aman") return "#78c679"; // hijau muda
-      if (v === "Sangat Aman") return "#238443"; // hijau tua
-
-      return "#999999"; // fallback kalau ada nilai lain / null
+      if (v === "Sangat Rawan") return "#8B0000";
+      if (v === "Rawan") return "#FF4500";
+      if (v === "Normal") return "#FFD700";
+      if (v === "Aman") return "#7CFC00";
+      if (v === "Sangat Aman") return "#006400";
+      return "#999999";
     };
 
-    // Baca kategori SRA dari beberapa kemungkinan nama field
     const getKategoriSra = (props) => {
-      return (
-        props?.["Nilai SRA"] || // alias "cantik"
-        props?.NILAI_SRA || // nama shapefile umum
-        props?.Nilai_SRA ||
-        props?.nilai_sra ||
-        ""
-      );
+      return props?.["nilai_sra"] || "";
     };
 
     const getSraStyle = (feature) => {
       const props = feature?.properties || {};
       const kategori = getKategoriSra(props);
-      const color = getSraColor(kategori);
+      const fillColor = getSraColor(kategori);
+      const oulineMap = {
+        "Sangat Rawan": "#4A0000",
+        Rawan: "#B22222",
+        Normal: "#B8860B",
+        Aman: "#2E8B57",
+        "Sangat Aman": "#003300",
+      };
       return {
-        color, // garis tepi
-        weight: 1.2,
-        fillColor: color,
-        fillOpacity: 0.7,
+        fillColor,
+        fillOpacity: 0.75,
+        color: oulineMap[kategori] || "#333333",
+        weight: 1.5,
+        opacity: 0.9,
       };
     };
+
     // ======================================================
-
     // Konfigurasi WFS dalam Array
-    const geoserverBase = "http://localhost:8080/geoserver";
-    const workspace = "WebGIS-SRA";
+    const geoserverBase = "http://18.140.237.220/geoserver";
+    const workspace = "Daftar-Aset-Holding";
 
-    // Endpoint WFS-T (POST Transaction)
-    const wfsTransactionUrl = `${geoserverBase}/${workspace}/wfs`;
+    const featureStore = { "Aset-Holding": [] };
+    const featureLayerStore = { "Aset-Holding": [] };
 
-    // ========= NAMA FIELD SHAPEFILE (BACKEND) PER LAYER =========
-    // SESUAIKAN DENGAN HASIL DescribeFeatureType DI GEOSERVER
-    const BACKEND_FIELD_NAMES = {
-      "Aset-Holding": {
-        nilai: "Nilai_SRA", // misal nama field shapefile: NILAI_SRA
-        tgl: "Tgl_Update", // misal nama field shapefile: TGL_UPDATE
-      },
-      "Aset-SubHolding": {
-        nilai: "Nilai_SRA",
-        tgl: "Tgl_Update",
-      },
-    };
-    // ============================================================
+    const parseLayerName = (name) => name.replace(/-/g, " ");
 
-    // Menyimpan fitur tiap layer untuk List Aset
-    const featureStore = {
-      "Aset-Holding": [],
-      "Aset-SubHolding": [],
-    };
-
-    const featureLayerStore = {
-      "Aset-Holding": [],
-      "Aset-SubHolding": [],
+    const buildLayerLabel = (layerName) => {
+      const name = parseLayerName(layerName);
+      let symbolHTML = "";
+      if (layerName === "Aset-Holding") {
+        symbolHTML = `<span style="width:14px; height:14px; display:inline-flex; align-items:center; justify-content:center; margin:0 6px 0 4px; border-radius:2px; background:linear-gradient(to right, #8B0000, #FF4500, #FFD700, #7CFC00, #006400); border:1px solid rgba(255,255,255,0.6);"></span>`;
+      } else if (layerName === "Pos Security") {
+        symbolHTML = `<span style="width:14px; height:14px; display:inline-flex; align-items:center; justify-content:center; margin:0 6px 0 4px; border-radius:50%; background:#8A2BE2; border:1px solid rgba(255,255,255,0.7);"></span>`;
+      } else if (layerName === "Fasilitas Kepolisian") {
+        symbolHTML = `<span style="width:14px; height:14px; display:inline-flex; align-items:center; justify-content:center; margin:0 6px 0 4px; border-radius:50%; background:#1E90FF; border:1px solid rgba(255,255,255,0.7);"></span>`;
+      } else if (layerName === "Fasilitas TNI") {
+        symbolHTML = `<span style="width:14px; height:14px; display:inline-flex; align-items:center; justify-content:center; margin:0 6px 0 4px; border-radius:50%; background:#FF8C00; border:1px solid rgba(255,255,255,0.7);"></span>`;
+      }
+      return `<span style="display:inline-flex; align-items:center; line-height:1;">${symbolHTML}<span style="line-height:1;">${name}</span></span>`;
     };
 
     const wfsConfigs = [
@@ -110,94 +106,95 @@ export default function AdminMap() {
         pointStyle: null,
       },
       {
-        name: "Aset-SubHolding",
-        typename: `${workspace}:Aset-SubHolding`,
-        style: getSraStyle,
-        pointStyle: null,
-      },
-      {
-        name: "Kantor-Pos-Security",
+        name: "Pos Security",
         typename: `${workspace}:Kantor-Pos-Security`,
         style: null,
         pointStyle: {
-          radius: 9,
+          radius: 4,
           fillColor: "#8A2BE2",
-          fillOpacity: 1.0,
-          color: "#8A2BE2",
-          weight: 0.5,
+          fillOpacity: 0.9,
+          color: "#FFFFFF",
+          weight: 1.2,
+          opacity: 0.7,
+        },
+      },
+      {
+        name: "Fasilitas Kepolisian",
+        typename: `${workspace}:Fasilitas_Kepolisian_TNI`,
+        style: null,
+        pointStyle: {
+          radius: 4,
+          fillColor: "#1E90FF",
+          fillOpacity: 0.9,
+          color: "#FFFFFF",
+          weight: 1.3,
+          opacity: 0.8,
+        },
+      },
+      {
+        name: "Fasilitas TNI",
+        typename: `${workspace}:Fasilitas_TNI`,
+        style: null,
+        pointStyle: {
+          radius: 4,
+          fillColor: "#FF8C00",
+          fillOpacity: 0.9,
+          color: "#FFFFFF",
+          weight: 1.3,
+          opacity: 0.75,
         },
       },
     ];
 
-    // Membangun URL WFS (GET GeoJSON / baca)
-    const buildWfsUrl = (typename) =>
-      `${geoserverBase}/${workspace}/ows?` +
-      new URLSearchParams({
+    const buildWfsUrl = (typename, cql = null) => {
+      const params = {
         service: "WFS",
         version: "1.1.0",
         request: "GetFeature",
         typename,
         outputFormat: "application/json",
         srsName: "EPSG:4326",
-      }).toString();
+      };
 
-    // Helper baca nilai tampilan (alias "Nilai SRA"/"Tgl Update" ↔ field backend)
-    const getFieldValueForDisplay = (layerName, props, key) => {
-      if (!props) return "-";
-
-      if (key === "Nilai SRA") {
-        return (
-          props["Nilai SRA"] ??
-          props.NILAI_SRA ??
-          props.Nilai_SRA ??
-          props.nilai_sra ??
-          "-"
-        );
+      if (cql) {
+        params.cql_filter = cql;
       }
 
-      if (key === "Tgl Update") {
-        return (
-          props["Tgl Update"] ??
-          props.Tgl_Update ??
-          props.TGL_UPDATE ??
-          props.tgl_update ??
-          "-"
-        );
-      }
-
-      // field lain tetap biasa
-      return props[key] ?? "-";
+      return (
+        `${geoserverBase}/${workspace}/ows?` +
+        new URLSearchParams(params).toString()
+      );
     };
 
-    // ===== KONFIGURASI FIELD POPUP PER LAYER =====
-    // Key di sini mengikuti nama PROPERTY yang keluar di GeoJSON (yang sekarang sudah jalan).
-    // Label hanya untuk tampilan.
     const popupFields = {
       "Aset-Holding": [
-        { key: "Aset", label: "Aset" },
-        { key: "Keterangan", label: "Keterangan" },
-        { key: "Luas (ha)", label: "Luas (ha)" },
-        { key: "Kab/Kota", label: "Kab/Kota" },
-        { key: "Kecamatan", label: "Kecamatan" },
-        { key: "Desa", label: "Desa" },
-        { key: "Nilai SRA", label: "Nilai SRA" },
-        { key: "Tgl Update", label: "Tgl Update" },
+        { colId: "ID2013_aset", key: "aset", label: "Aset" },
+        { colId: "ID2013_ket", key: "desa", label: "Keterangan" },
+        { colId: "ID2013_luas", key: "luas (ha)", label: "Luas (ha)" },
+        { colId: "ID2013_kab", key: "kab_kota", label: "Kab Kota" },
+        { colId: "ID2013_kec", key: "kecamatan", label: "Kecamatan" },
+        { colId: "ID2013_desa", key: "desa", label: "Desa" },
+        { colId: "ID2013_sra", key: "nilai_sra", label: "Nilai SRA" },
+        { colId: "ID2013_tgl", key: "tgl_update", label: "Tgl Update" },
       ],
-      "Aset-SubHolding": [
-        { key: "Block", label: "Block" },
-        { key: "Operator", label: "Operator" },
-        { key: "Contract", label: "Contract" },
-        { key: "Luas (ha)", label: "Luas (ha)" },
-        { key: "Perusahaan", label: "Perusahaan" },
-        { key: "SubHolding", label: "SubHolding" },
-        { key: "Region", label: "Region" },
-        { key: "Nilai SRA", label: "Nilai SRA" },
-        { key: "Tgl Update", label: "Tgl Update" },
+      "Pos Security": [
+        { key: "Nama Pos", label: "Nama Pos" },
+        { key: "Alamat", label: "Alamat" },
+        { key: "Penata", label: "Penata" },
+        { key: "No HP Pena", label: "No. HP Penata" },
+        { key: "Jlh_Per", label: "Jumlah Personil" },
       ],
+      "Fasilitas Kepolisian": [{ key: "name", label: "Nama Kantor" }],
+      "Fasilitas TNI": [{ key: "name", label: "Nama Kantor" }],
     };
-    // =============================================
 
-    // ====== RINGKASAN JUMLAH BERDASARKAN NILAI SRA ======
+    const fieldKeyToColIdMap = {};
+    popupFields["Aset-Holding"].forEach((f) => {
+      if (f.key && f.colId) {
+        fieldKeyToColIdMap[f.key] = f.colId;
+      }
+    });
+
     const sraCategories = [
       "Sangat Rawan",
       "Rawan",
@@ -205,344 +202,218 @@ export default function AdminMap() {
       "Aman",
       "Sangat Aman",
     ];
-
     let summaryDiv = null;
+    let currentServerDate = null;
 
     const countBySra = (features) => {
       const counts = {};
       sraCategories.forEach((cat) => (counts[cat] = 0));
-
       (features || []).forEach((f) => {
         const props = f.properties || {};
         const val = getKategoriSra(props);
-        if (counts[val] !== undefined) {
-          counts[val] += 1;
-        }
+        if (counts[val] !== undefined) counts[val] += 1;
       });
-
       return counts;
     };
 
     const renderSummary = () => {
       if (!summaryDiv) return;
-
       const holdingCounts = countBySra(featureStore["Aset-Holding"]);
-      const subCounts = countBySra(featureStore["Aset-SubHolding"]);
+      const total = sraCategories.reduce(
+        (sum, cat) => sum + (holdingCounts[cat] || 0),
+        0,
+      );
 
-      summaryDiv.innerHTML = `
-        <div style="font-weight:bold;text-align:center;margin-bottom:6px;">
-          Jumlah Aset Berdasarkan Nilai SRA
-        </div>
-
-        <div style="
-          display:flex;
-          flex-wrap:nowrap;
-          gap:16px;
-          justify-content:center;
-          align-items:flex-start;
-          text-align:center;
-        ">
-          <!-- Kolom Aset-Holding -->
-          <div style="flex:1; min-width:150px;">
-            <div style="font-weight:bold;margin-bottom:4px;">
-              Aset-Holding
-            </div>
-            <table style="width:100%;font-size:11px;border-collapse:collapse;">
-              ${sraCategories
-                .map(
-                  (cat) => `
-                <tr>
-                  <td style="padding:1px 2px;text-align:center;">${cat}</td>
-                  <td style="padding:1px 2px;text-align:center;">${holdingCounts[cat]}</td>
-                </tr>`
-                )
-                .join("")}
-            </table>
-          </div>
-
-          <!-- Kolom Aset-SubHolding -->
-          <div style="flex:1; min-width:150px;">
-            <div style="font-weight:bold;margin-bottom:4px;">
-              Aset-SubHolding
-            </div>
-            <table style="width:100%;font-size:11px;border-collapse:collapse;">
-              ${sraCategories
-                .map(
-                  (cat) => `
-                <tr>
-                  <td style="padding:1px 2px;text-align:center;">${cat}</td>
-                  <td style="padding:1px 2px;text-align:center;">${subCounts[cat]}</td>
-                </tr>`
-                )
-                .join("")}
-            </table>
-          </div>
-        </div>
-      `;
-    };
-    // ======================================================
-
-    // ========== HELPER UNTUK WFS-T UPDATE ================
-    const escapeXml = (unsafe) =>
-      unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&apos;");
-
-    const formatDateTimeLocal = () => {
-      const d = new Date();
-      const pad = (n) => String(n).padStart(2, "0");
-      // contoh format: 2025-11-19 14:35
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
-        d.getDate()
-      )} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    };
-
-    // ====== NOTIFIKASI KECIL (SNACKBAR) DI BAWAH HEADER ======
-    let notificationEl = null;
-    let notificationTimeout = null;
-
-    const showNotification = (message, type = "success") => {
-      if (!notificationEl) {
-        notificationEl = document.createElement("div");
-        notificationEl.style.position = "fixed";
-        notificationEl.style.top = "52px"; // tepat di bawah header biru
-        notificationEl.style.left = "50%";
-        notificationEl.style.transform = "translateX(-50%)";
-        notificationEl.style.zIndex = "9999";
-        notificationEl.style.padding = "6px 12px";
-        notificationEl.style.borderRadius = "4px";
-        notificationEl.style.fontSize = "12px";
-        notificationEl.style.fontFamily = "Arial, sans-serif";
-        notificationEl.style.boxShadow = "0 0 6px rgba(0,0,0,0.25)";
-        notificationEl.style.transition = "opacity 0.3s ease";
-        document.body.appendChild(notificationEl);
-      }
-
-      notificationEl.textContent = message;
-      notificationEl.style.opacity = "1";
-
-      if (type === "success") {
-        notificationEl.style.background = "#E6FFED";
-        notificationEl.style.color = "#166534";
-        notificationEl.style.border = "1px solid #4ade80";
-      } else if (type === "error") {
-        notificationEl.style.background = "#FEE2E2";
-        notificationEl.style.color = "#991B1B";
-        notificationEl.style.border = "1px solid #fca5a5";
-      } else {
-        notificationEl.style.background = "#E5E7EB";
-        notificationEl.style.color = "#111827";
-        notificationEl.style.border = "1px solid #9CA3AF";
-      }
-
-      // reset timer lama
-      if (notificationTimeout) {
-        clearTimeout(notificationTimeout);
-      }
-      notificationTimeout = setTimeout(() => {
-        if (notificationEl) {
-          notificationEl.style.opacity = "0";
-        }
-      }, 2500);
-    };
-    // ==========================================================
-
-    /**
-     * Kirim WFS-T Update ke GeoServer untuk mengubah:
-     *  - Nilai SRA
-     *  - Tgl Update (otomatis diisi saat ini)
-     */
-    const updateFeatureSra = async (layerName, featIndex, newSra) => {
-      const feats = featureStore[layerName];
-      if (!feats || !feats[featIndex]) return;
-
-      const feature = feats[featIndex];
-
-      // fid dari GeoJSON WFS (contoh: "WebGIS-SRA:Aset-Holding.1")
-      const fid = feature.id;
-      if (!fid) {
-        alert(
-          "Tidak ditemukan fid pada fitur, tidak bisa menjalankan WFS-T. Cek konfigurasi WFS (featureId)."
-        );
+      if (!total) {
+        summaryDiv.innerHTML = "<i>Data belum tersedia.</i>";
         return;
       }
 
-      const nowStr = formatDateTimeLocal();
+      const size = 110;
+      const radius = 55;
+      const hole = 78;
+      const center = size / 2;
+      let cumulativeAngle = -90;
+      let paths = "";
 
-      const cfg = wfsConfigs.find((c) => c.name === layerName);
-      if (!cfg) return;
+      sraCategories.forEach((cat) => {
+        const count = holdingCounts[cat] || 0;
+        if (!count) return;
+        const pct = (count / total) * 100;
+        const angle = (pct / 100) * 360;
+        const start = cumulativeAngle;
+        const end = cumulativeAngle + angle;
+        const color = getSraColor(cat);
+        const polar = (a) => {
+          const r = (a * Math.PI) / 180;
+          return [center + Math.cos(r) * radius, center + Math.sin(r) * radius];
+        };
+        const [x1, y1] = polar(start);
+        const [x2, y2] = polar(end);
+        const largeArc = angle > 180 ? 1 : 0;
+        const d = `M ${center} ${center} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+        paths += `<path d="${d}" fill="${color}" data-label="${cat} ${count} (${pct.toFixed(
+          1,
+        )}%)" style="cursor:pointer" onmousemove="showTooltip(event)" onmouseleave="hideTooltip()" />`;
+        cumulativeAngle = end;
+      });
 
-      // ambil nama tipe lokal (mis: "Aset-Holding" dari "WebGIS-SRA:Aset-Holding")
-      const localTypeName = cfg.typename.split(":")[1];
+      summaryDiv.innerHTML = `
+        <div style="width:100%; height:100%; display:flex; flex-direction:column;">
+          <div style="font-weight:bold; text-align:center; margin-bottom:4px; flex-shrink:0;">Jumlah Aset Berdasarkan Nilai SRA</div>
+          <div style="flex:1; display:flex; align-items:center; justify-content:center;">
+            <div class="donut-wrapper" style="position:relative; width:${size}px; height:${size}px;">
+              <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="position:absolute;top:0;left:0;z-index:1">${paths}</svg>
+              <div style="position:absolute; top:50%; left:50%; width:${hole}px; height:${hole}px; background:#011926; border-radius:50%; transform:translate(-50%, -50%); display:flex; align-items:center; justify-content:center; font-size:11px; text-align:center; pointer-events:auto; cursor:default; z-index:5;">
+                <div><b>Total ${total}</b></div>
+              </div>
+              <div id="sra-tooltip" style="position:absolute; background:#02293A; color:white; padding:4px 6px; border-radius:4px; font-size:11px; pointer-events:none; display:none; white-space:nowrap; z-index:10;"></div>
+            </div>
+          </div>
+        </div>`;
+    };
 
-      const backend = BACKEND_FIELD_NAMES[layerName] || {};
-      const backendNilaiSra = backend.nilai || "NILAI_SRA";
-      const backendTglUpdate = backend.tgl || "TGL_UPDATE";
+    window.showTooltip = (e) => {
+      const path = e.target.closest("path");
+      if (!path) return;
+      const tooltip = document.getElementById("sra-tooltip");
+      const rect = e.target.ownerSVGElement.getBoundingClientRect();
+      tooltip.textContent = path.dataset.label;
+      tooltip.style.display = "block";
+      tooltip.style.left = e.clientX - rect.left + 10 + "px";
+      tooltip.style.top = e.clientY - rect.top + 10 + "px";
+    };
 
-      // --- WFS-T pakai nama field shapefile (tanpa spasi) ---
-      const transactionBody = `<?xml version="1.0" encoding="UTF-8"?>
-<wfs:Transaction service="WFS" version="1.1.0"
- xmlns:wfs="http://www.opengis.net/wfs"
- xmlns:gml="http://www.opengis.net/gml"
- xmlns:ogc="http://www.opengis.net/ogc"
- xmlns:sra="http://localhost:8080/geoserver/${workspace}">
-  <wfs:Update typeName="sra:${localTypeName}">
-    <wfs:Property>
-      <wfs:Name>${backendNilaiSra}</wfs:Name>
-      <wfs:Value>${escapeXml(newSra)}</wfs:Value>
-    </wfs:Property>
-    <wfs:Property>
-      <wfs:Name>${backendTglUpdate}</wfs:Name>
-      <wfs:Value>${escapeXml(nowStr)}</wfs:Value>
-    </wfs:Property>
-    <ogc:Filter>
-      <ogc:FeatureId fid="${escapeXml(fid)}"/>
-    </ogc:Filter>
-  </wfs:Update>
-</wfs:Transaction>`;
+    window.hideTooltip = () => {
+      const tooltip = document.getElementById("sra-tooltip");
+      if (tooltip) tooltip.style.display = "none";
+    };
 
-      try {
-        const res = await fetch(wfsTransactionUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "text/xml",
-          },
-          body: transactionBody,
-        });
+    const openLayerPopup = (layer) => {
+      map.closePopup();
+      setTimeout(() => {
+        layer.openPopup();
+      }, 0);
+    };
 
-        const text = await res.text();
-        console.log("WFS-T response:", text);
+    let asetHoldingLayerRef = null;
 
-        // 1) kalau HTTP-nya gagal (500, 404, dll)
-        if (!res.ok) {
-          alert("Request WFS-T gagal di level HTTP. Cek console.");
-          return;
-        }
+    const createAsetHoldingLayer = (geojson) => {
+      featureLayerStore["Aset-Holding"] = [];
 
-        // 2) kalau GeoServer mengembalikan ExceptionReport
-        if (text.includes("ExceptionReport")) {
-          alert(
-            "GeoServer mengembalikan ExceptionReport (gagal WFS-T). Cek console."
-          );
-          return;
-        }
-        const updatedMatch = text.match(
-          /<wfs:totalUpdated>(\d+)<\/wfs:totalUpdated>/
-        );
-        const totalUpdated = updatedMatch ? parseInt(updatedMatch[1], 10) : 0;
-        if (totalUpdated <= 0) {
-          alert(
-            "Tidak ada fitur yang ter-update. Cek filter fid atau nama field."
-          );
-          return;
-        }
-
-        // ==== Jika berhasil, sinkronkan perubahan di client ====
-        // Simpan ke nama field backend shapefile
-        feature.properties[backendNilaiSra] = newSra;
-        feature.properties[backendTglUpdate] = nowStr;
-        // Dan juga ke alias "cantik" kalau ada
-        feature.properties["Nilai SRA"] = newSra;
-        feature.properties["Tgl Update"] = nowStr;
-
-        const entry = featureLayerStore[layerName]?.[featIndex];
-        if (entry && entry.layer) {
-          // update style polygon
-          if (entry.layer.setStyle && cfg.style) {
-            entry.layer.setStyle(cfg.style(feature));
-          }
-
-          // rebuild popup sesuai popupFields
+      return L.geoJSON(geojson, {
+        renderer: svgRenderer,
+        interactive: true,
+        style: getSraStyle,
+        onEachFeature: (feature, lyr) => {
           const props = feature.properties || {};
-          const fields = popupFields[layerName];
+          const fields = popupFields["Aset-Holding"];
+
+          let rows = fields
+            .map(({ key, label }) => {
+              const val = props[key] ?? "-";
+              return `<tr><td><b>${label}</b></td><td>${val}</td></tr>`;
+            })
+            .join("");
+
+          lyr.bindPopup(`<table>${rows}</table>`, {
+            className: "custom-popup",
+          });
+
+          lyr.on("click", (e) => {
+            L.DomEvent.stopPropagation(e);
+            openLayerPopup(lyr);
+          });
+
+          featureLayerStore["Aset-Holding"].push({
+            feature,
+            layer: lyr,
+          });
+        },
+      });
+    };
+
+    const createGenericLayer = (geojson, cfg) => {
+      if (featureLayerStore[cfg.name] !== undefined) {
+        featureLayerStore[cfg.name] = [];
+      }
+
+      return L.geoJSON(geojson, {
+        renderer: svgRenderer,
+        interactive: true,
+        style: cfg.style || undefined,
+        pointToLayer: (feature, latlng) =>
+          cfg.pointStyle
+            ? L.circleMarker(latlng, cfg.pointStyle)
+            : L.marker(latlng),
+
+        onEachFeature: (feature, lyr) => {
+          const props = feature.properties || {};
+          const fields = popupFields[cfg.name];
+
+          let rows = "";
+
           if (fields) {
-            const rows = fields
+            rows = fields
               .map(({ key, label }) => {
                 const val = props[key] ?? "-";
                 return `<tr><td><b>${label}</b></td><td>${val}</td></tr>`;
               })
               .join("");
-            entry.layer.bindPopup(`<table>${rows}</table>`);
+          } else {
+            rows = Object.entries(props)
+              .map(([k, v]) => `<tr><td><b>${k}</b></td><td>${v}</td></tr>`)
+              .join("");
           }
-        }
 
-        // update ringkasan
-        renderSummary();
+          lyr.bindPopup(`<table>${rows}</table>`, {
+            className: "custom-popup",
+          });
 
-        showNotification(
-          `Nilai SRA & Tgl Update berhasil diubah (${layerName}).`,
-          "success"
-        );
-      } catch (err) {
-        console.error("Error WFS-T:", err);
-        alert("Terjadi error saat menghubungi GeoServer (WFS-T).");
-      }
+          lyr.on("click", (e) => {
+            L.DomEvent.stopPropagation(e);
+            openLayerPopup(lyr);
+          });
+
+          if (featureLayerStore[cfg.name] !== undefined) {
+            featureLayerStore[cfg.name].push({ feature, layer: lyr });
+          }
+        },
+      });
     };
-    // ===================================================
 
-    // Fetch & Menambah Layer ke Map
     const fetchAndAddWfsLayer = async (cfg) => {
       try {
         const url = buildWfsUrl(cfg.typename);
         const res = await fetch(url);
         const geojson = await res.json();
 
-        // simpan fitur ke featureStore untuk list
         if (featureStore[cfg.name] !== undefined && geojson.features) {
           featureStore[cfg.name] = geojson.features;
         }
-
         if (featureLayerStore[cfg.name] !== undefined) {
           featureLayerStore[cfg.name] = [];
         }
 
-        const layer = L.geoJSON(geojson, {
-          style: cfg.style || undefined,
-          pointToLayer: (feature, latlng) =>
-            cfg.pointStyle
-              ? L.circleMarker(latlng, cfg.pointStyle)
-              : L.marker(latlng),
-          onEachFeature: (feature, lyr) => {
-            const props = feature?.properties ?? {};
-
-            // cek konfigurasi field berdasarkan nama layer
-            const fields = popupFields[cfg.name];
-
-            let rows = "";
-
-            if (fields) {
-              rows = fields
-                .map(({ key, label }) => {
-                  const val = getFieldValueForDisplay(cfg.name, props, key);
-                  return `<tr><td><b>${label}</b></td><td>${val}</td></tr>`;
-                })
-                .join("");
-            } else {
-              // fallback: semua atribut (misal Kantor-Pos-Security)
-              rows = Object.entries(props)
-                .map(
-                  ([k, v]) =>
-                    `<tr><td><b>${k}</b></td><td>${String(v)}</td></tr>`
-                )
-                .join("");
-            }
-
-            lyr.bindPopup(`<table>${rows}</table>`);
-
-            if (featureLayerStore[cfg.name] !== undefined) {
-              featureLayerStore[cfg.name].push({ feature, layer: lyr });
-            }
-          },
-        });
+        const layer =
+          cfg.name === "Aset-Holding"
+            ? createAsetHoldingLayer(geojson)
+            : createGenericLayer(geojson, cfg);
 
         if (layer.getLayers().length) {
           layer.addTo(map);
-          layersControl.addOverlay(layer, cfg.name);
+
+          if (cfg.name === "Aset-Holding") {
+            asetHoldingLayerRef = layer; // 🔥 SIMPAN LAYER UTAMA
+          }
+
+          if (layersControl) {
+            layersControl.addOverlay(layer, buildLayerLabel(cfg.name));
+          }
+
           return layer.getBounds();
         }
+
         return null;
       } catch (e) {
         console.error(`WFS fetch error for ${cfg.name}:`, e);
@@ -550,351 +421,727 @@ export default function AdminMap() {
       }
     };
 
-    // Muat Semua Layer Berdasarkan Array
     (async () => {
-      const boundsList = await Promise.all(wfsConfigs.map(fetchAndAddWfsLayer));
-
-      const nonNull = boundsList.filter((b) => Boolean(b));
-      if (nonNull.length) {
-        const combined = nonNull.reduce(
+      try {
+        const timeRes = await fetch(
+          "https://worldtimeapi.org/api/timezone/Asia/Jakarta",
+        );
+        const timeJson = await timeRes.json();
+        currentServerDate = new Date(timeJson.datetime);
+      } catch (e) {
+        console.warn("Gagal ambil waktu server, fallback ke UTC");
+        currentServerDate = new Date();
+      }
+      const boundsList = [];
+      for (const cfg of wfsConfigs) {
+        const bounds = await fetchAndAddWfsLayer(cfg);
+        if (bounds) boundsList.push(bounds);
+      }
+      if (boundsList.length) {
+        const combined = boundsList.reduce(
           (acc, b) => acc.extend(b),
-          L.latLngBounds(nonNull[0])
+          L.latLngBounds(boundsList[0]),
         );
         map.fitBounds(combined, { padding: [20, 20] });
       }
-
-      // setelah semua fitur termuat ke featureStore, render ringkasan
       renderSummary();
+      if (summaryDiv) {
+        summaryDiv.style.height = "175px";
+        summaryDiv.style.boxSizing = "border-box";
+      }
     })();
 
     // ========= LEGEND NILAI SRA DI KANAN BAWAH =========
     const legend = L.control({ position: "bottomright" });
-
     legend.onAdd = function () {
       const div = L.DomUtil.create("div", "info legend");
-
-      div.style.background = "white";
-      div.style.padding = "8px 10px";
-      div.style.borderRadius = "4px";
-      div.style.boxShadow = "0 0 6px rgba(0,0,0,0.3)";
-      div.style.font = "12px/1.4 Arial, sans-serif";
-
-      const categories = [
-        { label: "Sangat Rawan", color: "#b10026" },
-        { label: "Rawan", color: "#fc4e2a" },
-        { label: "Normal", color: "#feb24c" },
-        { label: "Aman", color: "#78c679" },
-        { label: "Sangat Aman", color: "#238443" },
-      ];
-
+      div.style.cssText =
+        "background:#011926; color:white; padding:8px 10px; border-radius:4px; box-shadow:0 0 6px rgba(0,0,0,0.3); font:12px/1.4 Arial, sans-serif;";
+      const cats = [
+        "Sangat Rawan",
+        "Rawan",
+        "Normal",
+        "Aman",
+        "Sangat Aman",
+      ].map((label) => ({
+        label,
+        color: getSraColor(label),
+      }));
       let html =
         "<div style='font-weight:bold;margin-bottom:4px;'>Nilai SRA</div>";
-
-      categories.forEach((cat) => {
-        html += `
-          <div style="display:flex;align-items:center;margin-bottom:2px;">
-            <span style="
-              width:14px;
-              height:14px;
-              background:${cat.color};
-              border:1px solid #555;
-              margin-right:6px;
-              display:inline-block;
-            "></span>
-            <span>${cat.label}</span>
-          </div>
-        `;
+      cats.forEach((cat) => {
+        html += `<div style="display:flex;align-items:center;margin-bottom:3px;">
+          <span style="width:14px; height:14px; background:${cat.color}; border:1px solid rgba(255,255,255,0.6); box-shadow:0 0 3px rgba(0,0,0,0.6); margin-right:6px; display:inline-block; border-radius:2px;"></span>
+          <span>${cat.label}</span>
+        </div>`;
       });
-
       div.innerHTML = html;
-
       L.DomEvent.disableClickPropagation(div);
       return div;
     };
-
     legend.addTo(map);
-    // ===================================================
 
-    // Kontrol Zoom
     const zoomControl = L.control.zoom({ position: "topright" });
     zoomControl.addTo(map);
 
     // ========= PANEL RINGKASAN DI KIRI BAWAH =========
     const summaryControl = L.control({ position: "bottomleft" });
-
     summaryControl.onAdd = function () {
       const div = L.DomUtil.create("div", "sra-summary");
-
-      div.style.background = "white";
-      div.style.padding = "8px 10px";
-      div.style.borderRadius = "4px";
-      div.style.boxShadow = "0 0 6px rgba(0,0,0,0.3)";
-      div.style.font = "12px/1.4 Arial, sans-serif";
-      div.style.margin = "10px";
-      div.style.minWidth = "340px";
-      div.style.textAlign = "center";
-
+      div.style.cssText =
+        "background:#011926; color:white; padding:6px 8px; border-radius:4px; box-shadow:0 0 6px rgba(0,0,0,0.3); font:12px/1.4 Arial, sans-serif; margin:6px; min-width:360px; max-width:360px;";
       div.innerHTML = "<i>Menghitung...</i>";
-
       summaryDiv = div;
-
+      setTimeout(renderSummary, 0);
       L.DomEvent.disableClickPropagation(div);
       return div;
     };
-
     summaryControl.addTo(map);
-    // =================================================
 
-    // Posisi Zoom Control
     const zoomEl = document.querySelector(".leaflet-control-zoom");
-    if (zoomEl) {
-      zoomEl.style.marginTop = "5px";
-    }
+    if (zoomEl) zoomEl.style.marginTop = "5px";
 
-    // ========= TAB "LIST ASET" (Admin – Bisa Edit Nilai SRA) =========
+    // ========= TAB "DAFTAR ASET" =========
     const assetListControl = L.control({ position: "topleft" });
-
     assetListControl.onAdd = function () {
       const container = L.DomUtil.create("div", "asset-list-control");
+      container.style.cssText = "margin-top:70px; margin-left:10px;";
 
-      container.style.marginTop = "70px"; // geser ke bawah biar di bawah judul
-      container.style.marginLeft = "10px";
-
-      // Tombol pembuka panel
       const button = document.createElement("button");
-      button.textContent = "List Aset (Admin)";
-      button.style.background = "#ffffff";
-      button.style.border = "1px solid #777";
-      button.style.borderRadius = "4px";
-      button.style.padding = "6px 10px";
-      button.style.cursor = "pointer";
-      button.style.fontSize = "12px";
-      button.style.boxShadow = "0 0 4px rgba(0,0,0,0.3)";
-      button.style.marginBottom = "4px";
+      button.textContent = "Daftar Aset";
+      button.style.cssText =
+        "background:#011926; color:white; border:1px solid #777; border-radius:4px; padding:6px 10px; cursor:pointer; font-size:12px; box-shadow:0 0 4px rgba(0,0,0,0.3); margin-bottom:4px;";
 
-      // Panel list
       const panel = document.createElement("div");
-      panel.style.display = "none";
-      panel.style.background = "white";
-      panel.style.padding = "8px 10px";
-      panel.style.borderRadius = "4px";
-      panel.style.boxShadow = "0 0 8px rgba(0,0,0,0.4)";
-      panel.style.width = "280px";
-      panel.style.maxHeight = "360px";
-      panel.style.overflowY = "auto";
-      panel.style.font = "12px/1.4 Arial, sans-serif";
+      panel.className = "asset-list-panel";
+      panel.style.cssText =
+        "display:none; background:#011926; color:white; padding:8px 10px; border-radius:4px; box-shadow:0 0 8px rgba(0,0,0,0.4); width:360px; max-height:calc(100vh - 230px); overflow-y:auto";
 
-      const header = document.createElement("div");
-      header.textContent = "List Aset (Admin – Edit Nilai SRA)";
-      header.style.fontWeight = "bold";
-      header.style.marginBottom = "6px";
+      L.DomEvent.disableScrollPropagation(panel);
+      L.DomEvent.disableClickPropagation(panel);
 
-      const info = document.createElement("div");
-      info.innerHTML =
-        "<small>Klik item untuk zoom & lihat popup. Gunakan tombol di bawah untuk mengubah Nilai SRA.</small>";
-      info.style.marginBottom = "6px";
+      const searchBar = document.createElement("div");
+      searchBar.style.cssText = "display:flex; gap:6px; margin-bottom:6px;";
 
-      const select = document.createElement("select");
-      select.style.width = "100%";
-      select.style.marginBottom = "6px";
-      select.style.padding = "4px";
-      select.style.fontSize = "12px";
+      const searchInput = document.createElement("input");
+      searchInput.type = "text";
+      searchInput.placeholder = "Cari aset (semua kolom)...";
+      searchInput.style.cssText =
+        "flex:1; padding:4px; font-size:12px; box-sizing:border-box; background:#03394F; color:white; border:1px solid #0D4F63;";
 
-      const optHolding = document.createElement("option");
-      optHolding.value = "Aset-Holding";
-      optHolding.textContent = "Aset-Holding";
+      const resetFilterBtn = document.createElement("button");
+      resetFilterBtn.textContent = "Reset";
+      resetFilterBtn.style.cssText =
+        "padding:4px 8px; font-size:11px; background:#7C2D12; color:white; border:1px solid #7C2D12; border-radius:3px; cursor:pointer;";
 
-      const optSubHolding = document.createElement("option");
-      optSubHolding.value = "Aset-SubHolding";
-      optSubHolding.textContent = "Aset-SubHolding";
+      searchBar.appendChild(searchInput);
+      searchBar.appendChild(resetFilterBtn);
 
-      select.appendChild(optHolding);
-      select.appendChild(optSubHolding);
+      const tableContainer = document.createElement("div");
+      tableContainer.style.cssText =
+        "max-height:240px; overflow-y:auto; overflow-x:auto;";
 
-      const listContainer = document.createElement("div");
+      const filterContainer = document.createElement("div");
+      filterContainer.style.cssText = "margin-top:6px; font-size:11px;";
 
-      panel.appendChild(header);
-      panel.appendChild(info);
-      panel.appendChild(select);
-      panel.appendChild(listContainer);
-
+      panel.appendChild(searchBar);
+      panel.appendChild(tableContainer);
+      panel.appendChild(filterContainer);
       container.appendChild(button);
       container.appendChild(panel);
 
-      L.DomEvent.disableClickPropagation(container);
+      let currentSearch = "";
+      let LAYER_NAME = "Aset-Holding";
+      let currentSort = { field: null, dir: "asc" };
+      let activeFilterField = null;
+      let activeFilterDropdown = null;
+      let tableEl, theadEl, tbodyEl;
+      let filterState = {};
+      let activeLayerRef = null;
 
-      const renderList = (layerName) => {
-        listContainer.innerHTML = "";
+      const updateSraValue = async (feature, layer, newValue) => {
+        const pad = (n) => String(n).padStart(2, "0");
+        const now = new Date();
+        const nowStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
-        const feats = featureStore[layerName] || [];
-        const fields = popupFields[layerName];
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<wfs:Transaction service="WFS" version="1.1.0"
+ xmlns:wfs="http://www.opengis.net/wfs"
+ xmlns:ogc="http://www.opengis.net/ogc">
+ <wfs:Update typeName="${workspace}:Aset-Holding">
+   <wfs:Property>
+     <wfs:Name>nilai_sra</wfs:Name>
+     <wfs:Value>${newValue}</wfs:Value>
+   </wfs:Property>
+   <wfs:Property>
+     <wfs:Name>tgl_update</wfs:Name>
+     <wfs:Value>${nowStr}</wfs:Value>
+   </wfs:Property>
+   <ogc:Filter>
+     <ogc:FeatureId fid="${feature.id}"/>
+   </ogc:Filter>
+ </wfs:Update>
+</wfs:Transaction>`;
 
-        if (!feats.length || !fields) {
-          listContainer.innerHTML = "<i>Data belum termuat atau kosong.</i>";
-          return;
-        }
-
-        feats.forEach((feat, idx) => {
-          const item = document.createElement("div");
-          item.style.borderBottom = "1px solid #ddd";
-          item.style.padding = "4px 0";
-          item.style.cursor = "pointer";
-          item.style.background = "#ffffff";
-
-          const table = document.createElement("table");
-          table.style.marginBottom = "4px";
-
-          fields.forEach(({ key, label }) => {
-            const row = document.createElement("tr");
-            const tdLabel = document.createElement("td");
-            tdLabel.innerHTML = `<b>${label}</b>`;
-            const tdVal = document.createElement("td");
-            tdVal.textContent = getFieldValueForDisplay(
-              layerName,
-              feat.properties,
-              key
-            );
-            row.appendChild(tdLabel);
-            row.appendChild(tdVal);
-            table.appendChild(row);
+        try {
+          const res = await fetch(`${geoserverBase}/${workspace}/wfs`, {
+            method: "POST",
+            headers: { "Content-Type": "text/xml" },
+            body: xml,
           });
 
-          item.appendChild(table);
+          const text = await res.text();
+          console.log("WFS-T RESPONSE:", text);
 
-          // === Tombol Admin: Ubah Nilai SRA ===
-          const adminBar = document.createElement("div");
-          adminBar.style.display = "flex";
-          adminBar.style.justifyContent = "space-between";
-          adminBar.style.alignItems = "center";
-          adminBar.style.gap = "4px";
+          if (!text.includes("totalUpdated>1")) {
+            alert("Update gagal di GeoServer");
+            return;
+          }
 
-          const currentLabel = document.createElement("span");
-          currentLabel.style.fontSize = "11px";
-          currentLabel.textContent = `SRA saat ini: ${
-            getKategoriSra(feat.properties) || "-"
-          }`;
+          // update data lokal
+          feature.properties.nilai_sra = newValue;
+          feature.properties.tgl_update = nowStr;
 
-          const editBtn = document.createElement("button");
-          editBtn.textContent = "Ubah Nilai SRA";
-          editBtn.style.fontSize = "11px";
-          editBtn.style.padding = "2px 4px";
-          editBtn.style.borderRadius = "3px";
-          editBtn.style.border = "1px solid #444";
-          editBtn.style.background = "#0A3566";
-          editBtn.style.color = "#fff";
-          editBtn.style.cursor = "pointer";
+          // update style polygon
+          layer.setStyle(getSraStyle(feature));
 
-          editBtn.onclick = (ev) => {
-            ev.stopPropagation();
+          renderSummary();
+          renderList();
+        } catch (err) {
+          console.error(err);
+          alert("Gagal update Nilai SRA");
+        }
+      };
 
-            // kalau editor sudah ada, jangan buat dua kali
-            if (item.querySelector(".sra-edit-inline")) return;
+      const clearActiveRow = () => {
+        if (activeRowRef.current) {
+          activeRowRef.current.classList.remove("active-row");
+          activeRowRef.current = null;
+        }
+      };
 
-            const currentVal = (getKategoriSra(feat.properties) || "").trim();
+      map.on("click", () => {
+        if (activeRowRef.current) {
+          activeRowRef.current.classList.remove("active-row");
+          activeRowRef.current = null;
+        }
+      });
 
-            // container editor
-            const editor = document.createElement("div");
-            editor.className = "sra-edit-inline";
-            editor.style.display = "flex";
-            editor.style.alignItems = "center";
-            editor.style.gap = "4px";
-            editor.style.marginTop = "4px";
-            editor.style.paddingTop = "4px";
-            editor.style.borderTop = "1px dashed #ccc";
+      document.addEventListener("click", (e) => {
+        if (!container.contains(e.target)) {
+          clearActiveRow();
+        }
 
-            const label = document.createElement("span");
-            label.style.fontSize = "11px";
-            label.textContent = "Ubah ke:";
+        if (activeFilterDropdown && !activeFilterDropdown.contains(e.target)) {
+          activeFilterDropdown.remove();
+          activeFilterDropdown = null;
+          activeFilterField = null;
 
-            const selectSra = document.createElement("select");
-            selectSra.style.fontSize = "11px";
-            selectSra.style.padding = "2px 4px";
-            selectSra.style.flex = "1";
+          const spans = theadEl?.querySelectorAll("th span:last-child");
+          spans?.forEach((s) => (s.textContent = "⛃"));
+        }
+      });
 
-            sraCategories.forEach((cat) => {
-              const opt = document.createElement("option");
-              opt.value = cat;
-              opt.textContent = cat;
-              if (cat === currentVal) opt.selected = true;
-              selectSra.appendChild(opt);
+      const disabledFilterFields = new Set(["Keterangan", "Luas (ha)"]);
+      const disabledHighlightCols = new Set(["ID2013_ket", "ID2013_luas"]);
+
+      const setHeaderFilterActive = (colId, isActive) => {
+        if (disabledHighlightCols.has(colId)) return;
+
+        if (!theadEl) return;
+
+        theadEl.querySelectorAll("th").forEach((th) => {
+          if (th.dataset.colId === colId) {
+            if (isActive) {
+              th.style.background = "linear-gradient(90deg, #0D4F63, #148AA6)";
+              th.style.borderBottom = "2px solid #5EF2FF";
+            } else {
+              th.style.background = "#02293A";
+              th.style.borderBottom = "1px solid rgba(255,255,255,0.4)";
+            }
+          }
+        });
+      };
+
+      const buildTableIfNeeded = (fields) => {
+        if (!tableEl) {
+          tableEl = document.createElement("table");
+          tableEl.style.cssText =
+            "width:100%; border-collapse:collapse; font-size:11px;";
+          theadEl = document.createElement("thead");
+          tbodyEl = document.createElement("tbody");
+          tableEl.appendChild(theadEl);
+          tableEl.appendChild(tbodyEl);
+          tableContainer.innerHTML = "";
+          tableContainer.appendChild(tableEl);
+        }
+        theadEl.innerHTML = "";
+        const headerRow = document.createElement("tr");
+        fields.forEach((field) => {
+          const th = document.createElement("th");
+          th.dataset.colId = field.colId;
+          th.style.cssText =
+            "position:sticky; top:0; z-index:5; padding:3px 6px; border-bottom:1px solid rgba(255,255,255,0.4); cursor:pointer; white-space:nowrap; background:#02293A; box-shadow:0 2px 0 rgba(0,0,0,0.4);";
+
+          const labelSpan = document.createElement("span");
+          labelSpan.textContent = field.label;
+
+          const sortSpan = document.createElement("span");
+          sortSpan.style.cssText = "margin-left:4px; font-size:10px;";
+          sortSpan.textContent =
+            currentSort.field === field.key
+              ? currentSort.dir === "asc"
+                ? "▲"
+                : "▼"
+              : "⇵";
+
+          th.appendChild(labelSpan);
+          th.appendChild(sortSpan);
+
+          if (!disabledFilterFields.has(field.label)) {
+            const filterSpan = document.createElement("span");
+            filterSpan.textContent = "⛃";
+            filterSpan.style.cssText =
+              "margin-left:4px; font-size:9px; cursor:pointer; opacity:0.8;";
+            filterSpan.onclick = (e) => {
+              e.stopPropagation();
+              toggleFilterDropdown(th, field, filterSpan);
+            };
+            th.appendChild(filterSpan);
+          }
+
+          th.onclick = () => {
+            if (currentSort.field === field.key) {
+              currentSort.dir = currentSort.dir === "asc" ? "desc" : "asc";
+            } else {
+              currentSort.field = field.key;
+              currentSort.dir = "asc";
+            }
+
+            renderList();
+          };
+          headerRow.appendChild(th);
+        });
+        theadEl.appendChild(headerRow);
+        Object.keys(filterState).forEach((fieldKey) => {
+          const colId = fieldKeyToColIdMap[fieldKey];
+          if (colId) {
+            setHeaderFilterActive(colId, true);
+          }
+        });
+      };
+
+      const MONTH_LABELS = [
+        "Januari",
+        "Februari",
+        "Maret",
+        "April",
+        "Mei",
+        "Juni",
+        "Juli",
+        "Agustus",
+        "September",
+        "Oktober",
+        "November",
+        "Desember",
+      ];
+
+      const buildCqlFromFilter = (field, values) => {
+        if (!field || !values || !values.size) return null;
+
+        if (field === "tgl_update") {
+          const clauses = Array.from(values).map((v) => {
+            const [year, month] = v.split("-").map(Number);
+
+            const start = `${year}-${String(month).padStart(2, "0")}-01`;
+
+            const endDate = new Date(year, month, 0);
+            const end = `${year}-${String(month).padStart(2, "0")}-${String(
+              endDate.getDate(),
+            ).padStart(2, "0")}`;
+
+            return `(tgl_update >= '${start}' AND tgl_update <= '${end}')`;
+          });
+
+          return clauses.length ? `(${clauses.join(" OR ")})` : null;
+        }
+
+        const quoted = Array.from(values)
+          .map((v) => `'${v.replace(/'/g, "''")}'`)
+          .join(",");
+
+        return `${field} IN (${quoted})`;
+      };
+
+      const isSameSet = (a, b) => {
+        if (!a && !b) return true;
+        if (!a || !b) return false;
+        if (a.size !== b.size) return false;
+        for (const v of a) {
+          if (!b.has(v)) return false;
+        }
+        return true;
+      };
+
+      const toggleFilterDropdown = (th, field, filterSpan) => {
+        if (activeFilterDropdown) {
+          activeFilterDropdown.remove();
+          activeFilterDropdown = null;
+          if (activeFilterField === field.key) {
+            filterSpan.textContent = "⛃";
+            activeFilterField = null;
+            return;
+          }
+        }
+        activeFilterField = field.key;
+
+        let tempSelectedValues = new Set(
+          filterState[field.key] ? Array.from(filterState[field.key]) : [],
+        );
+
+        const isMonthFilter = field.key === "tgl_update";
+
+        const dropdown = document.createElement("div");
+
+        const controlTop = document.createElement("div");
+        controlTop.style.cssText =
+          "display:flex; justify-content:space-between; margin-bottom:6px; font-size:11px;";
+
+        const selectAllBtn = document.createElement("button");
+        selectAllBtn.textContent = "Centang semua";
+        selectAllBtn.style.cssText =
+          "background:none; border:none; color:#7CFCFF; cursor:pointer; padding:0;";
+
+        const clearAllBtn = document.createElement("button");
+        clearAllBtn.textContent = "Uncheck semua";
+        clearAllBtn.style.cssText =
+          "background:none; border:none; color:#FF7C7C; cursor:pointer; padding:0;";
+
+        controlTop.appendChild(selectAllBtn);
+        controlTop.appendChild(clearAllBtn);
+        dropdown.appendChild(controlTop);
+
+        dropdown.style.cssText =
+          "position:absolute; background:#02293A; border:1px solid #0D4F63; border-radius:4px; padding:6px; z-index:9999; min-width:160px; max-height:160px; overflow-y:auto; font-size:11px; box-shadow:0 2px 6px rgba(0,0,0,0.4);";
+
+        const feats = featureLayerStore[LAYER_NAME] || [];
+
+        let values = [];
+
+        if (isMonthFilter) {
+          // 1. Ambil semua tgl_update dari data
+          const dates = feats
+            .map(({ feature }) => feature.properties?.tgl_update)
+            .filter(Boolean)
+            .map((d) => new Date(d));
+
+          // 2. Tentukan tanggal paling awal
+          const minDate = dates.length
+            ? new Date(Math.min(...dates))
+            : currentServerDate;
+
+          // Normalisasi ke awal bulan
+          let cursor = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+
+          const end = new Date(
+            currentServerDate.getFullYear(),
+            currentServerDate.getMonth(),
+            1,
+          );
+
+          values = [];
+
+          while (cursor <= end) {
+            const year = cursor.getFullYear();
+            const month = cursor.getMonth() + 1; // 1–12
+
+            values.push({
+              label: cursor.toLocaleString("id-ID", {
+                month: "long",
+                year: "numeric",
+              }),
+              value: `${year}-${month}`,
             });
 
-            const btnSimpan = document.createElement("button");
-            btnSimpan.textContent = "Simpan";
-            btnSimpan.style.fontSize = "11px";
-            btnSimpan.style.padding = "2px 6px";
-            btnSimpan.style.borderRadius = "3px";
-            btnSimpan.style.border = "1px solid #0A3566";
-            btnSimpan.style.background = "#0A3566";
-            btnSimpan.style.color = "#fff";
-            btnSimpan.style.cursor = "pointer";
+            cursor.setMonth(cursor.getMonth() + 1);
+          }
+        } else {
+          const set = new Set();
+          feats.forEach(({ feature }) =>
+            set.add(String(feature.properties?.[field.key] ?? "-")),
+          );
 
-            const btnBatal = document.createElement("button");
-            btnBatal.textContent = "Batal";
-            btnBatal.style.fontSize = "11px";
-            btnBatal.style.padding = "2px 6px";
-            btnBatal.style.borderRadius = "3px";
-            btnBatal.style.border = "1px solid #999";
-            btnBatal.style.background = "#f5f5f5";
-            btnBatal.style.cursor = "pointer";
+          values = Array.from(set)
+            .sort((a, b) => a.localeCompare(b, "id", { sesitivity: "base" }))
+            .map((v) => ({ label: v, value: v }));
+        }
 
-            btnBatal.onclick = (e2) => {
-              e2.stopPropagation();
-              editor.remove();
-            };
+        values.forEach(({ label, value }) => {
+          const row = document.createElement("label");
+          row.style.cssText = "display:flex; align-items:center; gap:4px;";
 
-            btnSimpan.onclick = async (e2) => {
-              e2.stopPropagation();
-              const newVal = selectSra.value.trim();
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
 
-              if (!newVal || newVal === currentVal) {
-                editor.remove();
+          cb.checked = tempSelectedValues.has(value);
+
+          cb.onchange = () => {
+            cb.checked
+              ? tempSelectedValues.add(value)
+              : tempSelectedValues.delete(value);
+          };
+
+          const span = document.createElement("span");
+          span.textContent = label;
+
+          row.appendChild(cb);
+          row.appendChild(span);
+          dropdown.appendChild(row);
+        });
+
+        // Select all
+        selectAllBtn.onclick = () => {
+          values.forEach(({ value }) => tempSelectedValues.add(value));
+          dropdown.querySelectorAll("input[type=checkbox]").forEach((cb) => {
+            cb.checked = true;
+          });
+        };
+
+        // Clear all
+        clearAllBtn.onclick = () => {
+          tempSelectedValues.clear();
+          dropdown.querySelectorAll("input[type=checkbox]").forEach((cb) => {
+            cb.checked = false;
+          });
+        };
+
+        panel.appendChild(dropdown);
+
+        const thRect = th.getBoundingClientRect();
+        const panelRect = panel.getBoundingClientRect();
+
+        dropdown.style.top = thRect.bottom - panelRect.top + "px";
+        dropdown.style.left = thRect.left - panelRect.left + "px";
+
+        activeFilterDropdown = dropdown;
+        filterSpan.textContent = "⛂";
+
+        // ===== TOMBOL OK (APPLY FILTER) =====
+        const applyBtn = document.createElement("button");
+        applyBtn.textContent = "OK";
+        applyBtn.style.cssText =
+          "margin-top:6px; width:100%; padding:4px; background:#0D4F63; color:white; border:1px solid #0D4F63; border-radius:3px; cursor:pointer; font-size:11px;";
+
+        applyBtn.onclick = async () => {
+          if (tempSelectedValues.size > 0) {
+            filterState[field.key] = new Set(tempSelectedValues);
+            setHeaderFilterActive(field.colId, true);
+          } else {
+            delete filterState[field.key];
+            setHeaderFilterActive(field.colId, false);
+          }
+
+          await refreshLayerWithFilters();
+          closeDropdown();
+        };
+
+        // Helper sederhana untuk menutup dropdown
+        const closeDropdown = () => {
+          dropdown.remove();
+          activeFilterDropdown = null;
+          filterSpan.textContent = "⛃";
+        };
+
+        const refreshLayerWithFilters = async () => {
+          // Gabungkan semua kriteria di filterState dengan operator AND
+          const cqlParts = Object.entries(filterState)
+            .map(([field, values]) => buildCqlFromFilter(field, values))
+            .filter(Boolean);
+
+          const combinedCql = cqlParts.length
+            ? cqlParts.map((c) => `(${c})`).join(" AND ")
+            : null;
+
+          try {
+            // 1. Hapus layer lama dari peta
+            if (asetHoldingLayerRef && map.hasLayer(asetHoldingLayerRef)) {
+              map.removeLayer(asetHoldingLayerRef);
+            }
+
+            // 2. Fetch data baru dengan CQL gabungan
+            const url = buildWfsUrl(`${workspace}:Aset-Holding`, combinedCql);
+            const res = await fetch(url);
+            const geojson = await res.json();
+
+            // 🔴 Jika hasil filter kosong → tidak replace data
+            if (!geojson.features || geojson.features.length === 0) {
+              console.log(
+                "Filter tidak menghasilkan data, mempertahankan data lama",
+              );
+
+              if (!geojson.features || geojson.features.length === 0) {
+                alert("Tidak ada aset pada bulan tersebut.");
                 return;
               }
 
-              await updateFeatureSra(layerName, idx, newVal);
-              // refresh tampilan list supaya Nilai SRA & Tgl Update terlihat update
-              renderList(layerName);
-            };
+              renderList();
+              renderSummary();
 
-            editor.appendChild(label);
-            editor.appendChild(selectSra);
-            editor.appendChild(btnSimpan);
-            editor.appendChild(btnBatal);
-
-            item.appendChild(editor);
-          };
-
-          adminBar.appendChild(currentLabel);
-          adminBar.appendChild(editBtn);
-
-          item.appendChild(adminBar);
-
-          // ⬇️ KLIK LIST = ZOOM KE ASET
-          item.onclick = () => {
-            const entry = featureLayerStore[layerName]?.[idx];
-            if (!entry || !entry.layer) return;
-
-            const lyr = entry.layer;
-
-            if (lyr.getBounds) {
-              const b = lyr.getBounds();
-              if (b && b.isValid && b.isValid()) {
-                map.fitBounds(b, { padding: [20, 20] });
-              } else if (b && b.getCenter) {
-                const center = b.getCenter();
-                map.setView(center, 14);
-              }
-            } else if (lyr.getLatLng) {
-              map.setView(lyr.getLatLng(), 16);
+              return;
             }
 
-            if (lyr.openPopup) {
-              lyr.openPopup();
+            // jika ada data baru
+            featureStore["Aset-Holding"] = geojson.features;
+            featureLayerStore["Aset-Holding"] = [];
+
+            asetHoldingLayerRef = createAsetHoldingLayer(geojson).addTo(map);
+
+            renderSummary();
+            renderList();
+          } catch (err) {
+            console.error("Gagal memperbarui filter:", err);
+          }
+        };
+        dropdown.appendChild(applyBtn);
+      };
+
+      const renderList = () => {
+        const featsWithLayer = featureLayerStore[LAYER_NAME] || [];
+        const fields = popupFields[LAYER_NAME];
+        if (!featsWithLayer.length || !fields) {
+          tableContainer.innerHTML = "<i>Data belum termuat atau kosong.</i>";
+          return;
+        }
+        buildTableIfNeeded(fields);
+        const term = currentSearch.toLowerCase();
+        let rows = [...featsWithLayer];
+
+        // sorting A-Z list aset
+        rows.sort((a, b) =>
+          String(a.feature.properties?.aset ?? "").localeCompare(
+            String(b.feature.properties?.aset ?? ""),
+            "id",
+            { sensitivity: "base" },
+          ),
+        );
+
+        if (term) {
+          rows = rows.filter(({ feature }) => {
+            const props = feature.properties || {};
+            return fields.some(({ key }) =>
+              String(props[key] ?? "")
+                .toLowerCase()
+                .includes(term),
+            );
+          });
+        }
+
+        if (currentSort.field) {
+          const key = currentSort.field;
+          const dir = currentSort.dir === "asc" ? 1 : -1;
+          rows = [...rows].sort(
+            (a, b) =>
+              String(a.feature.properties?.[key] ?? "").localeCompare(
+                String(b.feature.properties?.[key] ?? ""),
+              ) * dir,
+          );
+        }
+
+        tbodyEl.innerHTML = "";
+        rows.forEach(({ feature, layer }) => {
+          const tr = document.createElement("tr");
+          tr.style.cursor = "pointer";
+
+          tr.onclick = () => {
+            if (activeRowRef.current === tr) {
+              tr.classList.remove("active-row");
+              activeRowRef.current = null;
+              map.closePopup();
+              return;
             }
+
+            // reset row aktif lama
+            if (activeRowRef.current) {
+              activeRowRef.current.classList.remove("active-row");
+            }
+
+            // set row aktif baru
+            activeRowRef.current = tr;
+            tr.classList.add("active-row");
+
+            // zoom & popup
+            if (layer.getBounds) {
+              map.fitBounds(layer.getBounds(), {
+                padding: [20, 20],
+                maxZoom: 17,
+              });
+            } else {
+              map.setView(layer.getLatLng(), 17);
+            }
+
+            openLayerPopup(layer);
           };
 
-          listContainer.appendChild(item);
+          fields.forEach(({ key }) => {
+            const td = document.createElement("td");
+
+            // ===== KHUSUS KOLOM NILAI SRA =====
+            if (key === "nilai_sra") {
+              const wrapper = document.createElement("div");
+              wrapper.style.display = "flex";
+              wrapper.style.alignItems = "center";
+              wrapper.style.gap = "3px";
+
+              const select = document.createElement("select");
+
+              const options = [
+                "Sangat Rawan",
+                "Rawan",
+                "Normal",
+                "Aman",
+                "Sangat Aman",
+              ];
+
+              options.forEach((opt) => {
+                const o = document.createElement("option");
+                o.value = opt;
+                o.textContent = opt;
+                select.appendChild(o);
+              });
+
+              select.value = feature.properties.nilai_sra || "";
+
+              select.style.cssText =
+                "background:#03394F;color:white;border:1px solid #0D4F63;font-size:11px;padding:2px;";
+
+              // tombol save icon floppy
+              const saveBtn = document.createElement("button");
+              saveBtn.innerHTML = "💾";
+
+              saveBtn.title = "Simpan perubahan";
+
+              saveBtn.style.cssText =
+                "background:#0D4F63;border:1px solid #0D4F63;color:white;font-size:11px;padding:2px 4px;border-radius:2px;cursor:pointer;";
+
+              saveBtn.onclick = (e) => {
+                e.stopPropagation();
+                updateSraValue(feature, layer, select.value);
+              };
+
+              wrapper.appendChild(select);
+              wrapper.appendChild(saveBtn);
+
+              td.appendChild(wrapper);
+            } else {
+              td.textContent = feature.properties[key] ?? "-";
+            }
+
+            td.style.cssText =
+              "padding:3px 6px;border-bottom:1px solid rgba(255,255,255,0.15);color:white;white-space:nowrap;";
+
+            tr.appendChild(td);
+          });
+          tbodyEl.appendChild(tr);
         });
       };
 
@@ -902,72 +1149,74 @@ export default function AdminMap() {
         const isHidden =
           panel.style.display === "none" || panel.style.display === "";
         panel.style.display = isHidden ? "block" : "none";
-        if (isHidden) {
-          renderList(select.value);
-        }
+        if (isHidden) renderList();
       };
 
-      select.onchange = () => {
-        renderList(select.value);
+      searchInput.oninput = () => {
+        currentSearch = searchInput.value || "";
+        renderList();
+      };
+
+      resetFilterBtn.onclick = async () => {
+        // hapus semua filter
+        filterState = {};
+
+        // reset highlight header
+        if (theadEl) {
+          theadEl.querySelectorAll("th").forEach((th) => {
+            th.style.background = "#02293A";
+            th.style.borderBottom = "1px solid rgba(255,255,255,0.4)";
+          });
+        }
+
+        try {
+          if (asetHoldingLayerRef && map.hasLayer(asetHoldingLayerRef)) {
+            map.removeLayer(asetHoldingLayerRef);
+          }
+
+          const url = buildWfsUrl(`${workspace}:Aset-Holding`, null);
+          const res = await fetch(url);
+          const geojson = await res.json();
+
+          featureStore["Aset-Holding"] = geojson.features;
+          featureLayerStore["Aset-Holding"] = [];
+
+          asetHoldingLayerRef = createAsetHoldingLayer(geojson).addTo(map);
+
+          renderSummary();
+          renderList();
+        } catch (err) {
+          console.error("Gagal reset filter:", err);
+        }
       };
 
       return container;
     };
-
     assetListControl.addTo(map);
-    // ============================================================
 
-    // ========= FULL-WIDTH HEADER TITLE WEBGIS DI BAGIAN ATAS =========
+    // ========= FULL-WIDTH HEADER TITLE =========
     const titleControl = L.control({ position: "topleft" });
-
     titleControl.onAdd = function () {
       const div = L.DomUtil.create("div", "webgis-title");
-
-      div.style.position = "fixed";
-      div.style.top = "0";
-      div.style.left = "0px";
-      div.style.right = "10px";
-      div.style.background = "#0A3566";
-      div.style.color = "white";
-      div.style.padding = "10px 20px";
-      div.style.fontSize = "18px";
-      div.style.fontWeight = "bold";
-      div.style.fontFamily = "Arial, sans-serif";
-      div.style.letterSpacing = "0.5px";
-      div.style.whiteSpace = "nowrap";
-      div.style.boxShadow = "0 2px 6px rgba(0,0,0,0.3)";
-      div.style.zIndex = "9999";
-
+      div.style.cssText =
+        "position:fixed; top:0; left:0; right:10px; background:#1B4965; color:white; padding:10px 20px; font-size:18px; font-weight:500; font-family:Arial, sans-serif; letter-spacing:0.5px; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,0.3); z-index:9999;";
       div.innerHTML =
-        "WebGIS Security Risk Assessment Aset Pertamina – <span style='font-size:14px;font-weight:normal;'>Laman Admin</span>";
+        "Dashboard Security Risk Assessment (SRA) Aset Head Office Pertamina" +
+        " <span style='font-size:14px; font-weight:normal;'>- Laman Admin</span>";
 
       L.DomEvent.disableClickPropagation(div);
       return div;
     };
-
     titleControl.addTo(map);
-    // ====================================================
 
-    // ===== PINDAHKAN PANEL LAYERS KE BAWAH HEADER BIRU =====
     const layerCtrlEl = document.querySelector(".leaflet-control-layers");
     if (layerCtrlEl) {
-      layerCtrlEl.style.marginTop = "70px";
-      layerCtrlEl.style.marginRight = "10px";
+      layerCtrlEl.style.cssText += "margin-top:70px; margin-right:10px;";
     }
 
-    // Clean Up
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-      if (notificationEl) {
-        notificationEl.remove();
-        notificationEl = null;
-      }
-      if (notificationTimeout) {
-        clearTimeout(notificationTimeout);
-      }
+      mapRef.current?.remove();
+      mapRef.current = null;
     };
   }, []);
 

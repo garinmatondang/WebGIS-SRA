@@ -29,20 +29,40 @@ body,
 
 /* Chrome, Edge, Safari */
 .asset-list-panel::-webkit-scrollbar {
-  width: 6px !important;
+  width: 6px;
 }
 
 .asset-list-panel::-webkit-scrollbar-track {
-  background: #011926 !important;
+  background: #011926;
+  border-radius: 4px;
 }
 
 .asset-list-panel::-webkit-scrollbar-thumb {
   background-color: #0d4f63 !important;
   border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .asset-list-panel::-webkit-scrollbar-thumb:hover {
-  background-color: #0f6883 !important;
+  background-color: #0f6883;
+}
+
+.asset-list-panel table tr.active-row {
+  background: #045a7a !important;
+}
+
+.asset-list-panel table tr.active-row td {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.asset-list-panel tbody tr.active-row {
+  background-color: #0d6b8f !important;
+}
+
+.asset-list-panel tbody tr:hover:not(.active-row) {
+  background-color: #03394f;
+  cursor: pointer;
 }
 
 /* CUSTOM POPUP */
@@ -58,7 +78,7 @@ body,
 }
 
 /* Konten di dalam popup */
-leaflet-poptup.custom-popup .leaflet-popup-content {
+.leaflet-popup.custom-popup .leaflet-popup-content {
   margin: 0;
   padding: 4px 10px;
   color: white !important;
@@ -78,6 +98,20 @@ leaflet-poptup.custom-popup .leaflet-popup-content {
   color: white !important;
 }
 
+/* Zebra row */
+.leaflet-popup.custom-popup table tr:nth-child(odd) {
+  background: #02293a;
+}
+
+.leaflet-popup.custom-popup table tr:nth-child(even) {
+  background: #03394f;
+}
+
+/* Hover baris */
+.leaflet-popup.custom-popup table tr:hover {
+  background: #045a7a;
+}
+
 /* Judul Field */
 .leaflet-popup.custom-popup table td:first-child {
   white-space: nowrap;
@@ -85,7 +119,7 @@ leaflet-poptup.custom-popup .leaflet-popup-content {
 }
 
 /* Label */
-leaflet-popup.custom-popup table b {
+.leaflet-popup.custom-popup table b {
   color: #b8e3f5 !important;
 }
 

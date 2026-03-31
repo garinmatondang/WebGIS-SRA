@@ -14,14 +14,14 @@ export default function Login({ onLoginSuccess }) {
     //Validasi DOMAIN
     if (role === "user" && !email.endsWith("@user.com")) {
       setError(
-        "Email ini bukan email User. Gunakan email berakhiran @user.com"
+        "Email ini bukan email User. Gunakan email berakhiran @user.com",
       );
       return;
     }
 
     if (role === "admin" && !email.endsWith("@admin.com")) {
       setError(
-        "Email ini bukan email Admin. Gunakan email berakhiran @admin.com"
+        "Email ini bukan email Admin. Gunakan email berakhiran @admin.com",
       );
       return;
     }
@@ -71,10 +71,10 @@ export default function Login({ onLoginSuccess }) {
         }}
       >
         <h2 style={{ marginBottom: "4px", color: "#0A3566" }}>
-          WebGIS Security Risk Assessment
+          Dashboard Security Risk Assessment
         </h2>
         <p style={{ marginBottom: "16px", fontSize: "13px", color: "#555" }}>
-          Silakan login menggunakan akun Firebase Anda.
+          Silakan login menggunakan akun Firebase Anda
         </p>
 
         <div style={{ textAlign: "left", marginBottom: "12px" }}>
@@ -183,7 +183,7 @@ export default function Login({ onLoginSuccess }) {
             marginTop: "12px",
           }}
         >
-          *Untuk sementara, role (User/Admin) hanya dipilih di sini.
+          HSSE - Security Head Office
         </p>
       </div>
     </div>
