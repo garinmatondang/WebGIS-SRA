@@ -75,7 +75,7 @@ export default function Map() {
 
     // ======================================================
     // Konfigurasi WFS dalam Array
-    const geoserverBase = "http://18.140.237.220/geoserver";
+    const geoserverBase = "/geoserver";
     const workspace = "Daftar-Aset-Holding";
 
     const featureStore = { "Aset-Holding": [] };

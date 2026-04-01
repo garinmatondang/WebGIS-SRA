@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/geoserver/:path*",
+      "destination": "http://18.140.237.220:8080/geoserver/:path*"
+    }
+  ]
+}
