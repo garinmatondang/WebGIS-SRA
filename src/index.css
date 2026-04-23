@@ -1,0 +1,170 @@
+@import "tailwindcss";
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+/*  SCROLLBAR UNTUK PANEL ASET   */
+/* Firefox */
+.asset-list-panel {
+  scrollbar-width: thin;
+  scrollbar-color: #0d4f63 #011926;
+}
+
+/* Chrome, Edge, Safari */
+.asset-list-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.asset-list-panel::-webkit-scrollbar-track {
+  background: #011926;
+  border-radius: 4px;
+}
+
+.asset-list-panel::-webkit-scrollbar-thumb {
+  background-color: #0d4f63 !important;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.asset-list-panel::-webkit-scrollbar-thumb:hover {
+  background-color: #0f6883;
+}
+
+.asset-list-panel table tr.active-row {
+  background: #045a7a !important;
+}
+
+.asset-list-panel table tr.active-row td {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.asset-list-panel tbody tr.active-row {
+  background-color: #0d6b8f !important;
+}
+
+.asset-list-panel tbody tr:hover:not(.active-row) {
+  background-color: #03394f;
+  cursor: pointer;
+}
+
+/* CUSTOM POPUP */
+
+/* Wrapper utama Popup */
+.leaflet-popup.custom-popup .leaflet-popup-content-wrapper {
+  background: #011926 !important;
+  color: white !important;
+  border-radius: 6px;
+  padding: 6px 0;
+  margin: 0;
+  border: 0;
+}
+
+/* Konten di dalam popup */
+.leaflet-popup.custom-popup .leaflet-popup-content {
+  margin: 0;
+  padding: 4px 10px;
+  color: white !important;
+  font-size: 12px;
+  font-family: Arial, sans-serif;
+}
+
+/* Tabel */
+.leaflet-popup.custom-popup table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+/* Sel tabel (judul + isi */
+.leaflet-popup.custom-popup table td {
+  padding: 3px 8px;
+  color: white !important;
+}
+
+/* Zebra row */
+.leaflet-popup.custom-popup table tr:nth-child(odd) {
+  background: #02293a;
+}
+
+.leaflet-popup.custom-popup table tr:nth-child(even) {
+  background: #03394f;
+}
+
+/* Hover baris */
+.leaflet-popup.custom-popup table tr:hover {
+  background: #045a7a;
+}
+
+/* Judul Field */
+.leaflet-popup.custom-popup table td:first-child {
+  white-space: nowrap;
+  padding-right: 12px;
+}
+
+/* Label */
+.leaflet-popup.custom-popup table b {
+  color: #b8e3f5 !important;
+}
+
+/* ZOOM CONTROL CUSTOM */
+.leaflet-control-zoom a {
+  background: #011926 !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  font-weight: bold;
+}
+
+.leaflet-control-zoom a:hover {
+  background: #03394f !important;
+  color: white !important;
+}
+
+/* PANEL LAYER BUTTON */
+.leaflet-control-layers-toggle {
+  background-color: #011926 !important;
+  color: white !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+/* LIST PANEL */
+.leaflet-control-layers-expanded {
+  background: #011926 !important;
+  color: white !important;
+  border-radius: 6px !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* TEKS DI DALAM LIST */
+.leaflet-control-layers-expanded label {
+  color: white !important;
+}
+
+/* CHECKBOX */
+.leaflet-control-layers-selector {
+  accent-color: #0d4f63 !important;
+}
+
+/* HOVER ITEM */
+.leaflet-control-layers-expanded label:hover {
+  background: #03394f !important;
+  color: white !important;
+}
